@@ -1,0 +1,141 @@
+# Cassandra StatefulSet
+# Философия: Распределённая NoSQL БД для больших объёмов данных
+# Используется для хранения аналитических данных и временных рядов
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cassandra
+  namespace: demo-app
+spec:
+  serviceName: cassandra-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cassandra
+  template:
+    metadata:
+      labels:
+        app: cassandra
+    spec:
+      containers:
+      - name: cassandra
+        image: cassandra:4.1
+        env:
+        # Cluster configuration
+        - name: CASSANDRA_CLUSTER_NAME
+          value: "DemoAppCluster"
+
+        # Seeds для формирования кластера
+        - name: CASSANDRA_SEEDS
+          value: "cassandra-0.cassandra-service.demo-app.svc.cluster.local"
+
+        # Datacenter and rack
+        - name: CASSANDRA_DC
+          value: "dc1"
+        - name: CASSANDRA_RACK
+          value: "rack1"
+
+        # Endpoint snitch
+        - name: CASSANDRA_ENDPOINT_SNITCH
+          value: "GossipingPropertyFileSnitch"
+
+        # Memory settings (JVM heap)
+        - name: MAX_HEAP_SIZE
+          value: "512M"
+        - name: HEAP_NEWSIZE
+          value: "128M"
+
+        ports:
+        - containerPort: 7000
+          name: intra-node
+        - containerPort: 7001
+          name: tls-intra-node
+        - containerPort: 7199
+          name: jmx
+        - containerPort: 9042
+          name: cql
+
+        volumeMounts:
+        - name: cassandra-storage
+          mountPath: /var/lib/cassandra
+
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+
+        livenessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - nodetool status
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 10
+
+        readinessProbe:
+          exec:
+            command:
+            - /bin/bash
+            - -c
+            - nodetool status | grep -E "^UN\\s+${POD_IP}"
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - nodetool drain
+
+  volumeClaimTemplates:
+  - metadata:
+      name: cassandra-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-service
+  namespace: demo-app
+  labels:
+    app: cassandra
+spec:
+  clusterIP: None  # Headless service для StatefulSet
+  selector:
+    app: cassandra
+  ports:
+  - name: cql
+    port: 9042
+    targetPort: 9042
+  - name: jmx
+    port: 7199
+    targetPort: 7199
+---
+# Regular ClusterIP service для доступа из приложений
+apiVersion: v1
+kind: Service
+metadata:
+  name: cassandra-client
+  namespace: demo-app
+  labels:
+    app: cassandra
+spec:
+  type: ClusterIP
+  selector:
+    app: cassandra
+  ports:
+  - name: cql
+    port: 9042
+    targetPort: 9042

@@ -1,0 +1,26 @@
+{
+  "name": "notification-service",
+  "version": "1.0.0",
+  "description": "Notification Service using Fastify and Kafka",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [
+    "fastify",
+    "kafka",
+    "notifications",
+    "microservices"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fastify": "^4.25.2",
+    "kafkajs": "^2.2.4",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
