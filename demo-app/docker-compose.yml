@@ -1,0 +1,127 @@
+# Демонстрационное приложение: Идеальный Стек
+# Композиция микросервисов с Polyglot Persistence
+
+version: '3.8'
+
+services:
+  # ============================================
+  # API Gateway (Nginx)
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: demo-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    networks:
+      - demo-network
+
+  # ============================================
+  # User Service (Flask + MongoDB)
+  # ============================================
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: demo-user-service
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/users
+      - REDIS_URI=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - demo-network
+
+  # ============================================
+  # Product Service (Flask + MongoDB)
+  # ============================================
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    container_name: demo-product-service
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/products
+      - REDIS_URI=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - demo-network
+
+  # ============================================
+  # Order Service (Flask + PostgreSQL)
+  # ============================================
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: demo-order-service
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/orders
+      - USER_SERVICE_URL=http://user-service:5000
+      - PRODUCT_SERVICE_URL=http://product-service:5000
+    depends_on:
+      - postgres
+    networks:
+      - demo-network
+
+  # ============================================
+  # Databases
+  # ============================================
+
+  # MongoDB (Users, Products)
+  mongodb:
+    image: mongo:7-jammy
+    container_name: demo-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - demo-network
+
+  # PostgreSQL (Orders)
+  postgres:
+    image: postgres:16-alpine
+    container_name: demo-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=orders
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - demo-network
+
+  # Redis (Cache, Sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: demo-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - demo-network
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  demo-network:
+    driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  mongodb-data:
+  postgres-data:
