@@ -33,6 +33,16 @@ jobs:
         working-directory: demo-app/mobile-flutter
         run: flutter pub get
 
+      - name: Create Android platform files
+        working-directory: demo-app/mobile-flutter
+        run: |
+          if [ ! -d "android" ]; then
+            echo "Android folder not found, creating..."
+            flutter create --platforms android .
+          else
+            echo "Android folder already exists"
+          fi
+
       - name: Analyze code
         working-directory: demo-app/mobile-flutter
         run: flutter analyze
