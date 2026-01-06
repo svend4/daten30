@@ -1,0 +1,32 @@
+apiVersion: v2
+name: demo-app
+description: Demo Application Helm Chart - Production Ready
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - microservices
+  - kubernetes
+  - polyglot-persistence
+  - event-driven
+
+maintainers:
+  - name: Demo App Team
+    email: team@demo-app.local
+
+dependencies:
+  - name: mongodb
+    version: "13.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: mongodb.enabled
+
+  - name: postgresql
+    version: "12.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+
+  - name: redis
+    version: "18.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: redis.enabled
