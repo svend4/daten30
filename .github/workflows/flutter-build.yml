@@ -43,6 +43,34 @@ jobs:
             echo "Android folder already exists"
           fi
 
+      - name: Enable cleartext traffic for localhost
+        working-directory: demo-app/mobile-flutter/android/app/src/main
+        run: |
+          echo "=== Enabling cleartext HTTP for localhost ==="
+
+          # Add usesCleartextTraffic to AndroidManifest.xml
+          sed -i 's/android:label="demo_app_mobile"/android:label="demo_app_mobile"\n        android:usesCleartextTraffic="true"/' AndroidManifest.xml
+
+          # Create network security config
+          mkdir -p res/xml
+          cat > res/xml/network_security_config.xml <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>
+EOF
+
+          # Reference it in AndroidManifest.xml
+          sed -i 's/android:usesCleartextTraffic="true"/android:usesCleartextTraffic="true"\n        android:networkSecurityConfig="@xml\/network_security_config"/' AndroidManifest.xml
+
+          echo "✅ Cleartext traffic enabled for localhost"
+          echo "=== Updated AndroidManifest.xml ==="
+          cat AndroidManifest.xml
+
       - name: Update Gradle wrapper to fix Maven 403 errors
         working-directory: demo-app/mobile-flutter/android
         run: |
