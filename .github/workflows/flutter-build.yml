@@ -52,22 +52,46 @@ jobs:
           sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-bin.zip|' gradle/wrapper/gradle-wrapper.properties
           echo "✓ Updated Gradle wrapper to 8.3"
 
-          # Show current build.gradle content for debugging
-          echo "=== Current build.gradle content ==="
-          cat build.gradle
+          # Backup original build.gradle
+          cp build.gradle build.gradle.backup
 
-          # Update Android Gradle Plugin in all possible formats
-          # Format 1: classpath "com.android.tools.build:gradle:X.X.X"
-          sed -i 's/com\.android\.tools\.build:gradle:[0-9.]\+/com.android.tools.build:gradle:8.1.0/g' build.gradle
+          # Rewrite build.gradle with compatible versions
+          cat > build.gradle << 'BUILDGRADLE'
+buildscript {
+    ext.kotlin_version = '1.9.0'
+    repositories {
+        google()
+        mavenCentral()
+    }
 
-          # Format 2: id "com.android.application" version "X.X.X"
-          sed -i 's/id "com\.android\.application" version "[0-9.]\+"/id "com.android.application" version "8.1.0"/g' build.gradle
-          sed -i "s/id 'com\.android\.application' version '[0-9.]\+'/id 'com.android.application' version '8.1.0'/g" build.gradle
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
 
-          echo "✓ Updated Android Gradle Plugin to 8.1.0"
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
 
-          # Show updated build.gradle
-          echo "=== Updated build.gradle content ==="
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
+BUILDGRADLE
+
+          echo "✓ Rewrote build.gradle with Gradle 8.1.0 and Kotlin 1.9.0"
+          echo "=== New build.gradle content ==="
           cat build.gradle
 
       - name: Analyze code
