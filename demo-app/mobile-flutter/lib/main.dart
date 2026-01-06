@@ -271,15 +271,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Expanded(child: _StatCard('👥', 'Users', provider.stats['users']?.toString() ?? '0', Colors.blue)),
+                  Expanded(child: _buildStatCard('👥', 'Users', provider.stats['users']?.toString() ?? '0', Colors.blue)),
                   const SizedBox(width: 10),
-                  Expanded(child: _StatCard('🛍️', 'Products', provider.stats['products']?.toString() ?? '0', Colors.green)),
+                  Expanded(child: _buildStatCard('🛍️', 'Products', provider.stats['products']?.toString() ?? '0', Colors.green)),
                 ],
               ),
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Expanded(child: _StatCard('📦', 'Orders', provider.stats['orders']?.toString() ?? '0', Colors.orange)),
+                  Expanded(child: _buildStatCard('📦', 'Orders', provider.stats['orders']?.toString() ?? '0', Colors.orange)),
                   const SizedBox(width: 10),
                   Expanded(child: Container()),
                 ],
@@ -293,10 +293,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       const Text('🎯 Architecture Highlights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 10),
-                      _InfoRow('Microservices', 'User, Product, Order, Analytics, Notification'),
-                      _InfoRow('Polyglot Persistence', 'MongoDB + PostgreSQL + Redis + Cassandra'),
-                      _InfoRow('Mobile', 'Flutter (iOS + Android + Web)'),
-                      _InfoRow('Backend', 'Flask (Python) + Gin (Go) + Fastify (Node.js)'),
+                      _buildInfoRow('Microservices', 'User, Product, Order, Analytics, Notification'),
+                      _buildInfoRow('Polyglot Persistence', 'MongoDB + PostgreSQL + Redis + Cassandra'),
+                      _buildInfoRow('Mobile', 'Flutter (iOS + Android + Web)'),
+                      _buildInfoRow('Backend', 'Flask (Python) + Gin (Go) + Fastify (Node.js)'),
                     ],
                   ),
                 ),
@@ -308,7 +308,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _StatCard(String icon, String label, String value, Color color) {
+  Widget _buildStatCard(String icon, String label, String value, Color color) {
     return Card(
       color: color.withOpacity(0.1),
       child: Padding(
@@ -325,7 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _InfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
