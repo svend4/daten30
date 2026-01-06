@@ -13,11 +13,14 @@ WORKDIR /app
 # Копирование go.mod и go.sum
 COPY go.mod go.sum* ./
 
-# Загрузка зависимостей
-RUN go mod download
+# Загрузка зависимостей и генерация go.sum
+RUN go mod download && go mod verify
 
 # Копирование исходного кода
 COPY . .
+
+# Обновление go.sum если нужно
+RUN go mod tidy
 
 # Сборка приложения
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o analytics-service .
