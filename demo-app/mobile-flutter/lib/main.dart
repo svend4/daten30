@@ -159,17 +159,20 @@ class DataProvider with ChangeNotifier {
 
   Future<void> loadStats() async {
     try {
-      final userStats = await _api.get('/user-stats');
-      final productStats = await _api.get('/product-stats');
-      final orderStats = await _api.get('/order-stats');
+      final userData = await _api.get(ApiConfig.userServiceUrl);
+      final productData = await _api.get(ApiConfig.productServiceUrl);
+      final orderData = await _api.get(ApiConfig.orderServiceUrl);
+
       stats = {
-        'users': userStats['total_users'] ?? 0,
-        'products': productStats['total_products'] ?? 0,
-        'orders': orderStats['total_orders'] ?? 0,
+        'users': (userData['users'] as List?)?.length ?? 0,
+        'products': (productData['products'] as List?)?.length ?? 0,
+        'orders': (orderData['orders'] as List?)?.length ?? 0,
       };
+      error = null;
       notifyListeners();
     } catch (e) {
       error = e.toString();
+      notifyListeners();
     }
   }
 }
