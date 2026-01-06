@@ -1,0 +1,128 @@
+# User Service Deployment
+# Философия: Горизонтальное масштабирование, Автоматическое восстановление
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: demo-app
+  labels:
+    app: user-service
+    tier: backend
+    database: mongodb
+spec:
+  # Реплики для High Availability
+  replicas: 3
+
+  # Стратегия обновления без простоя
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1         # Добавить 1 новый pod
+      maxUnavailable: 0   # Не убирать старые пока новый не ready
+
+  selector:
+    matchLabels:
+      app: user-service
+
+  template:
+    metadata:
+      labels:
+        app: user-service
+        tier: backend
+
+    spec:
+      containers:
+      - name: user-service
+        image: user-service:latest
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - containerPort: 5000
+          name: http
+
+        # Environment из ConfigMap
+        env:
+        - name: MONGO_URI
+          value: "mongodb://$(MONGO_HOST):$(MONGO_PORT)/users"
+        - name: REDIS_URI
+          value: "redis://$(REDIS_HOST):$(REDIS_PORT)"
+
+        envFrom:
+        - configMapRef:
+            name: app-config
+
+        # Resource limits (важно для autoscaling!)
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+
+        # Health checks для self-healing
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+
+---
+# User Service - Service (Load Balancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: demo-app
+  labels:
+    app: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+  - port: 5000
+    targetPort: 5000
+    protocol: TCP
+    name: http
+
+---
+# Horizontal Pod Autoscaler
+# Автоматическое масштабирование на основе CPU/Memory
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: user-service-hpa
+  namespace: demo-app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: user-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

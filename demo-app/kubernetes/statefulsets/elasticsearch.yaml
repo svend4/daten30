@@ -1,0 +1,132 @@
+# Elasticsearch StatefulSet
+# Философия: Распределённый поиск и аналитика в реальном времени
+# Используется для полнотекстового поиска товаров
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: demo-app
+spec:
+  serviceName: elasticsearch-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      # Инициализационный контейнер для настройки vm.max_map_count
+      initContainers:
+      - name: increase-vm-max-map
+        image: busybox:latest
+        command:
+        - sysctl
+        - -w
+        - vm.max_map_count=262144
+        securityContext:
+          privileged: true
+
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+        env:
+        # Режим single-node для упрощения
+        - name: discovery.type
+          value: "single-node"
+
+        # Отключаем xpack security для dev окружения
+        - name: xpack.security.enabled
+          value: "false"
+
+        # Java heap size (50% от memory limit)
+        - name: ES_JAVA_OPTS
+          value: "-Xms512m -Xmx512m"
+
+        # Cluster name
+        - name: cluster.name
+          value: "demo-app-cluster"
+
+        # Node name
+        - name: node.name
+          value: "elasticsearch-0"
+
+        ports:
+        - containerPort: 9200
+          name: http
+        - containerPort: 9300
+          name: transport
+
+        volumeMounts:
+        - name: elasticsearch-storage
+          mountPath: /usr/share/elasticsearch/data
+
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+
+        livenessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+
+        readinessProbe:
+          httpGet:
+            path: /_cluster/health
+            port: 9200
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-service
+  namespace: demo-app
+  labels:
+    app: elasticsearch
+spec:
+  clusterIP: None  # Headless service
+  selector:
+    app: elasticsearch
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
+  - name: transport
+    port: 9300
+    targetPort: 9300
+---
+# Regular ClusterIP service для доступа из приложений
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-client
+  namespace: demo-app
+  labels:
+    app: elasticsearch
+spec:
+  type: ClusterIP
+  selector:
+    app: elasticsearch
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200

@@ -1,0 +1,30 @@
+# ConfigMap с конфигурацией приложения
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: demo-app
+data:
+  # MongoDB
+  MONGO_HOST: "mongodb-service"
+  MONGO_PORT: "27017"
+
+  # PostgreSQL
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "orders"
+
+  # Redis
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+  # Kafka
+  KAFKA_BROKER: "kafka-service:9092"
+
+  # Elasticsearch
+  ELASTICSEARCH_HOST: "elasticsearch-service"
+  ELASTICSEARCH_PORT: "9200"
+
+  # Cassandra
+  CASSANDRA_HOST: "cassandra-service"
+  CASSANDRA_PORT: "9042"
