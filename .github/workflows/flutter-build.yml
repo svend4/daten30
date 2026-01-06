@@ -51,18 +51,11 @@ jobs:
           # Add usesCleartextTraffic to AndroidManifest.xml
           sed -i 's/android:label="demo_app_mobile"/android:label="demo_app_mobile"\n        android:usesCleartextTraffic="true"/' AndroidManifest.xml
 
-          # Create network security config
+          # Create network security config directory
           mkdir -p res/xml
-          cat > res/xml/network_security_config.xml <<'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-    </domain-config>
-</network-security-config>
-EOF
+
+          # Copy pre-configured network security config
+          cp ../../../../../../../.github/network_security_config.xml res/xml/network_security_config.xml
 
           # Reference it in AndroidManifest.xml
           sed -i 's/android:usesCleartextTraffic="true"/android:usesCleartextTraffic="true"\n        android:networkSecurityConfig="@xml\/network_security_config"/' AndroidManifest.xml
@@ -70,6 +63,8 @@ EOF
           echo "✅ Cleartext traffic enabled for localhost"
           echo "=== Updated AndroidManifest.xml ==="
           cat AndroidManifest.xml
+          echo "=== network_security_config.xml ==="
+          cat res/xml/network_security_config.xml
 
       - name: Update Gradle wrapper to fix Maven 403 errors
         working-directory: demo-app/mobile-flutter/android
