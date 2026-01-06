@@ -56,7 +56,7 @@ jobs:
           cp build.gradle build.gradle.backup
 
           # Rewrite build.gradle with compatible versions
-          cat > build.gradle << 'BUILDGRADLE'
+          cat > build.gradle <<'EOF'
 buildscript {
     ext.kotlin_version = '1.9.0'
     repositories {
@@ -88,7 +88,7 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
-BUILDGRADLE
+EOF
 
           echo "✓ Rewrote build.gradle with Gradle 8.1.0 and Kotlin 1.9.0"
           echo "=== New build.gradle content ==="
