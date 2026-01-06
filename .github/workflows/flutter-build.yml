@@ -83,24 +83,28 @@ jobs:
             const branch = process.env.BRANCH;
             const shaShort = process.env.SHA_SHORT;
 
+            const message = [
+              '## 📱 Flutter APK собран успешно!',
+              '',
+              '**Скачать APK:**',
+              downloadUrl,
+              '',
+              '**Файл:** `demo-app-' + branch + '-' + shaShort + '.apk`',
+              '',
+              '**Режим:** Termux (localhost:5001/5002/5003)',
+              '',
+              '### Установка:',
+              '1. Скачайте APK из артефактов',
+              '2. Установите на Android',
+              '3. Убедитесь что Termux backend запущен',
+              '4. Откройте приложение'
+            ].join('\n');
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 📱 Flutter APK собран успешно!
-
-**Скачать APK:**
-${downloadUrl}
-
-**Файл:** \`demo-app-${branch}-${shaShort}.apk\`
-
-**Режим:** Termux (localhost:5001/5002/5003)
-
-### Установка:
-1. Скачайте APK из артефактов
-2. Установите на Android
-3. Убедитесь что Termux backend запущен
-4. Откройте приложение`
+              body: message
             });
 
   build-info:
