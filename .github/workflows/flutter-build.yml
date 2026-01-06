@@ -52,30 +52,47 @@ jobs:
           sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-bin.zip|' gradle/wrapper/gradle-wrapper.properties
           echo "✓ Updated Gradle wrapper to 8.3"
 
-          # Show current build.gradle content for debugging
-          echo "=== Current build.gradle content ==="
+          # Backup original build.gradle
+          cp build.gradle build.gradle.backup
+
+          # Rewrite build.gradle with compatible versions
+          cat > build.gradle << 'BUILDGRADLE'
+buildscript {
+    ext.kotlin_version = '1.9.0'
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
+BUILDGRADLE
+
+          echo "✓ Rewrote build.gradle with Gradle 8.1.0 and Kotlin 1.9.0"
+          echo "=== New build.gradle content ==="
           cat build.gradle
-
-          # Update Android Gradle Plugin using extended regex (-E flag)
-          # This matches: com.android.tools.build:gradle:X.X.X (any version number)
-          sed -i -E "s/com\.android\.tools\.build:gradle:[0-9.]+/com.android.tools.build:gradle:8.1.0/g" build.gradle
-
-          # Also update kotlin version if present (older versions also blocked)
-          sed -i -E "s/kotlin_version = '[0-9.]+'/kotlin_version = '1.9.0'/g" build.gradle
-          sed -i -E 's/kotlin_version = "[0-9.]+"/kotlin_version = "1.9.0"/g' build.gradle
-
-          echo "✓ Updated Android Gradle Plugin to 8.1.0"
-
-          # Show updated build.gradle
-          echo "=== Updated build.gradle content ==="
-          cat build.gradle
-
-          # Also update app/build.gradle if exists
-          if [ -f "app/build.gradle" ]; then
-            echo "=== Updating app/build.gradle ==="
-            sed -i -E "s/compileSdkVersion [0-9]+/compileSdkVersion 34/" app/build.gradle
-            sed -i -E "s/targetSdkVersion [0-9]+/targetSdkVersion 34/" app/build.gradle
-          fi
 
       - name: Analyze code
         working-directory: demo-app/mobile-flutter
