@@ -267,6 +267,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Termux Connection Status
+              if (provider.error != null)
+                Card(
+                  color: Colors.red.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.error_outline, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('❌ Нет связи с Termux', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Text('Убедитесь что Termux backend запущен:', style: TextStyle(fontSize: 12)),
+                        SizedBox(height: 4),
+                        Text('cd ~/daten30/termux', style: TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                        Text('bash scripts/start-all.sh', style: TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                        SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: provider.isLoading ? null : () {
+                            context.read<DataProvider>().loadStats();
+                            context.read<DataProvider>().loadUsers();
+                            context.read<DataProvider>().loadProducts();
+                            context.read<DataProvider>().loadOrders();
+                          },
+                          icon: Icon(Icons.refresh),
+                          label: Text('🔄 Повторить подключение'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Card(
+                  color: Colors.green.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green, size: 20),
+                        SizedBox(width: 8),
+                        Text('✅ Подключено к Termux', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                        Spacer(),
+                        IconButton(
+                          icon: Icon(Icons.refresh, color: Colors.green),
+                          onPressed: provider.isLoading ? null : () {
+                            context.read<DataProvider>().loadStats();
+                            context.read<DataProvider>().loadUsers();
+                            context.read<DataProvider>().loadProducts();
+                            context.read<DataProvider>().loadOrders();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 20),
               const Text('📊 System Overview', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               Row(
@@ -364,7 +429,27 @@ class _UsersScreenState extends State<UsersScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (provider.error != null) {
-          return Center(child: Text('Error: ${provider.error}'));
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text('Ошибка подключения', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Text('Убедитесь что Termux backend запущен', textAlign: TextAlign.center),
+                  SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => context.read<DataProvider>().loadUsers(),
+                    icon: Icon(Icons.refresh),
+                    label: Text('Повторить'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return ListView.builder(
           padding: const EdgeInsets.all(16),
@@ -420,7 +505,27 @@ class _ProductsScreenState extends State<ProductsScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (provider.error != null) {
-          return Center(child: Text('Error: ${provider.error}'));
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text('Ошибка подключения', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Text('Убедитесь что Termux backend запущен', textAlign: TextAlign.center),
+                  SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => context.read<DataProvider>().loadProducts(),
+                    icon: Icon(Icons.refresh),
+                    label: Text('Повторить'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return GridView.builder(
           padding: const EdgeInsets.all(16),
@@ -491,7 +596,27 @@ class _OrdersScreenState extends State<OrdersScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (provider.error != null) {
-          return Center(child: Text('Error: ${provider.error}'));
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text('Ошибка подключения', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 8),
+                  Text('Убедитесь что Termux backend запущен', textAlign: TextAlign.center),
+                  SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => context.read<DataProvider>().loadOrders(),
+                    icon: Icon(Icons.refresh),
+                    label: Text('Повторить'),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
         return ListView.builder(
           padding: const EdgeInsets.all(16),
