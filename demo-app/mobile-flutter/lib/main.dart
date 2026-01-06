@@ -3,21 +3,104 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// API Configuration
+// API Configuration для разных режимов
 class ApiConfig {
-  static const String baseUrl = 'http://10.0.2.2:8080/api'; // Android Emulator
-  // static const String baseUrl = 'http://localhost:8080/api'; // iOS Simulator
-  // static const String baseUrl = 'https://demo-app.local/api'; // Production
+  // Режим работы: 'termux', 'online', 'emulator'
+  static const String mode = 'termux'; // ← Измените здесь!
+
+  // Termux режим (Flask на том же устройстве)
+  static const String _termuxUserService = 'http://127.0.0.1:5001';
+  static const String _termuxProductService = 'http://127.0.0.1:5002';
+  static const String _termuxOrderService = 'http://127.0.0.1:5003';
+
+  // Online режим (Backend на сервере)
+  static const String _onlineBaseUrl = 'http://YOUR_SERVER:8080/api';
+
+  // Emulator режим (для тестирования в эмуляторе)
+  static const String _emulatorBaseUrl = 'http://10.0.2.2:8080/api';
+
+  // Получить URL для Users
+  static String get userServiceUrl {
+    switch (mode) {
+      case 'termux':
+        return '$_termuxUserService/api/users';
+      case 'online':
+        return '$_onlineBaseUrl/users';
+      case 'emulator':
+        return '$_emulatorBaseUrl/users';
+      default:
+        return '$_termuxUserService/api/users';
+    }
+  }
+
+  // Получить URL для Products
+  static String get productServiceUrl {
+    switch (mode) {
+      case 'termux':
+        return '$_termuxProductService/api/products';
+      case 'online':
+        return '$_onlineBaseUrl/products';
+      case 'emulator':
+        return '$_emulatorBaseUrl/products';
+      default:
+        return '$_termuxProductService/api/products';
+    }
+  }
+
+  // Получить URL для Orders
+  static String get orderServiceUrl {
+    switch (mode) {
+      case 'termux':
+        return '$_termuxOrderService/api/orders';
+      case 'online':
+        return '$_onlineBaseUrl/orders';
+      case 'emulator':
+        return '$_emulatorBaseUrl/orders';
+      default:
+        return '$_termuxOrderService/api/orders';
+    }
+  }
+
+  // Health check URLs
+  static String get userHealthUrl => mode == 'termux'
+      ? '$_termuxUserService/health'
+      : '$_onlineBaseUrl/users/health';
+  static String get productHealthUrl => mode == 'termux'
+      ? '$_termuxProductService/health'
+      : '$_onlineBaseUrl/products/health';
+  static String get orderHealthUrl => mode == 'termux'
+      ? '$_termuxOrderService/health'
+      : '$_onlineBaseUrl/orders/health';
 }
 
-// API Service
+// API Service с поддержкой разных endpoints
 class ApiService {
-  Future<Map<String, dynamic>> get(String endpoint) async {
-    final response = await http.get(Uri.parse('${ApiConfig.baseUrl}$endpoint'));
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
+  Future<Map<String, dynamic>> get(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      throw Exception('HTTP ${response.statusCode}: ${response.body}');
+    } catch (e) {
+      throw Exception('Failed to load data: $e');
     }
-    throw Exception('Failed to load data');
+  }
+
+  Future<Map<String, dynamic>> post(String url, Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      }
+      throw Exception('HTTP ${response.statusCode}: ${response.body}');
+    } catch (e) {
+      throw Exception('Failed to post data: $e');
+    }
   }
 }
 
@@ -36,7 +119,7 @@ class DataProvider with ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      final data = await _api.get('/users');
+      final data = await _api.get(ApiConfig.userServiceUrl);
       users = data['users'] ?? [];
       error = null;
     } catch (e) {
@@ -50,7 +133,7 @@ class DataProvider with ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      final data = await _api.get('/products');
+      final data = await _api.get(ApiConfig.productServiceUrl);
       products = data['products'] ?? [];
       error = null;
     } catch (e) {
@@ -64,7 +147,7 @@ class DataProvider with ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      final data = await _api.get('/orders');
+      final data = await _api.get(ApiConfig.orderServiceUrl);
       orders = data['orders'] ?? [];
       error = null;
     } catch (e) {

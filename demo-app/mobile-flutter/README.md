@@ -1,109 +1,123 @@
-# 📱 Demo App - Flutter Mobile
+# 📱 Flutter Mobile App - Demo App
 
-**Кроссплатформенное мобильное приложение на Flutter**
+Flutter приложение с поддержкой нескольких режимов backend.
 
-## Философия
+---
 
-Flutter следует той же философии композиции и виджетов:
-- **Виджеты** - всё является виджетом
-- **Композиция** - сложные UI из простых виджетов
-- **Один кодbase** - iOS + Android + Web
-- **Высокая производительность** - компиляция в нативный код
+## 🎯 Режимы работы
 
-## Возможности
+Приложение поддерживает 3 режима подключения к backend:
 
-✅ **Dashboard** - статистика системы
-✅ **Users** - список пользователей (MongoDB)
-✅ **Products** - каталог товаров (MongoDB)
-✅ **Orders** - список заказов (PostgreSQL)
-✅ **Provider** - state management
-✅ **Material Design 3** - современный UI
+### 1. 🔥 Termux Mode (по умолчанию)
 
-## Структура
-
-```
-mobile-flutter/
-├── lib/
-│   └── main.dart          # Все экраны и логика
-├── pubspec.yaml           # Dependencies
-└── README.md
-```
-
-## Быстрый старт
-
-### Требования
-
-- Flutter SDK 3.0+
-- Android Studio / Xcode
-- Android Emulator / iOS Simulator
-
-### Запуск
-
-```bash
-cd mobile-flutter
-
-# Установка зависимостей
-flutter pub get
-
-# Запуск на эмуляторе
-flutter run
-
-# Сборка APK (Android)
-flutter build apk --release
-
-# Сборка iOS
-flutter build ios --release
-
-# Сборка Web
-flutter build web
-```
-
-## API Configuration
-
-Настройте URL в `lib/main.dart`:
+**Для работы с Termux backend на том же Android устройстве.**
 
 ```dart
-class ApiConfig {
-  // Android Emulator
-  static const String baseUrl = 'http://10.0.2.2:8080/api';
-
-  // iOS Simulator
-  // static const String baseUrl = 'http://localhost:8080/api';
-
-  // Production
-  // static const String baseUrl = 'https://demo-app.local/api';
-}
+// В main.dart, строка 9:
+static const String mode = 'termux';
 ```
 
-## Экраны
+**Backend URLs:**
+- User Service: `http://127.0.0.1:5001/api/users`
+- Product Service: `http://127.0.0.1:5002/api/products`
+- Order Service: `http://127.0.0.1:5003/api/orders`
 
-1. **Dashboard** - Overview с статистикой
-2. **Users** - ListView пользователей
-3. **Products** - GridView товаров
-4. **Orders** - ListView заказов с статусами
+**Требования:**
+- Termux backend запущен на том же устройстве
+- Сервисы работают на портах 5001, 5002, 5003
 
-## State Management
+---
 
-Используется **Provider** для управления состоянием:
-- `DataProvider` - централизованное хранилище
-- `ChangeNotifier` - реактивные обновления
-- `Consumer` - подписка на изменения
+### 2. 🌐 Online Mode
 
-## Dependencies
+**Для работы с backend на удалённом сервере.**
 
-- `http: ^1.1.2` - HTTP клиент
-- `provider: ^6.1.1` - State management
-- `cupertino_icons: ^1.0.6` - iOS иконки
+```dart
+// В main.dart, строка 9:
+static const String mode = 'online';
 
-## Философия Flutter
+// И обновите URL сервера на строке 17:
+static const String _onlineBaseUrl = 'http://YOUR_SERVER:8080/api';
+```
 
-Flutter идеально вписывается в общую архитектуру:
+---
 
-| Концепция | Flutter | Backend |
-|-----------|---------|---------|
-| **Композиция** | Виджеты | Микросервисы |
-| **Специализация** | StatelessWidget/StatefulWidget | User/Product/Order Service |
-| **Минимализм** | Material Design | Flask/Gin/Fastify |
-| **Декларативность** | Widget tree | YAML manifests |
+### 3. 🖥️ Emulator Mode
 
-**Минимализм + Flutter работают!** 🚀
+**Для тестирования в Android Emulator.**
+
+```dart
+// В main.dart, строка 9:
+static const String mode = 'emulator';
+```
+
+---
+
+## 🚀 Быстрый старт
+
+### Для Termux режима:
+
+```bash
+# 1. Запустить Termux backend (в Termux на телефоне)
+~/termux-backend/scripts/start-all.sh
+
+# 2. Собрать APK (на компьютере)
+cd demo-app/mobile-flutter
+flutter build apk --release
+
+# 3. Скачать APK из GitHub Actions artifacts
+# ИЛИ установить напрямую:
+adb install build/app/outputs/flutter-apk/app-release.apk
+```
+
+---
+
+## 📦 Автоматическая сборка (GitHub Actions)
+
+**APK собирается автоматически при каждом push!**
+
+### Скачать APK:
+
+1. Перейти на GitHub: https://github.com/svend4/daten30
+2. Перейти в Actions → "Build Flutter APK"
+3. Выбрать последний успешный build
+4. Скачать из Artifacts
+
+**Имя файла:** `demo-app-<branch>-<commit>.apk`
+
+---
+
+## 🔧 Изменение режима
+
+Откройте `lib/main.dart` и измените строку 9:
+
+```dart
+static const String mode = 'termux'; // 'termux', 'online', или 'emulator'
+```
+
+После изменения пересоберите APK.
+
+---
+
+## 🧪 Проверка подключения
+
+```bash
+# В Termux на телефоне:
+curl http://localhost:5001/health
+curl http://localhost:5002/health
+curl http://localhost:5003/health
+```
+
+Должно вернуть: `{"status": "healthy"}`
+
+---
+
+## 📚 Документация
+
+- **Termux Setup:** `../../termux/README.md`
+- **Deployment Variants:** `../DEPLOYMENT_VARIANTS.md`
+- **Offline Plan:** `OFFLINE_PLAN.md`
+
+---
+
+**Приложение готово к использованию с Termux backend!** 🚀
