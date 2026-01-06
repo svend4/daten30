@@ -44,27 +44,19 @@ jobs:
           fi
 
       - name: Enable cleartext traffic for localhost
-        working-directory: demo-app/mobile-flutter/android/app/src/main
         run: |
+          cd demo-app/mobile-flutter/android/app/src/main
           echo "=== Enabling cleartext HTTP for localhost ==="
 
-          # Add usesCleartextTraffic to AndroidManifest.xml
-          sed -i 's/android:label="demo_app_mobile"/android:label="demo_app_mobile"\n        android:usesCleartextTraffic="true"/' AndroidManifest.xml
+          sed -i 's/android:label="demo_app_mobile"/android:label="demo_app_mobile" android:usesCleartextTraffic="true"/' AndroidManifest.xml
 
-          # Create network security config directory
           mkdir -p res/xml
+          cp $GITHUB_WORKSPACE/.github/network_security_config.xml res/xml/network_security_config.xml
 
-          # Copy pre-configured network security config
-          cp ../../../../../../../.github/network_security_config.xml res/xml/network_security_config.xml
+          sed -i 's/android:usesCleartextTraffic="true"/android:usesCleartextTraffic="true" android:networkSecurityConfig="@xml\/network_security_config"/' AndroidManifest.xml
 
-          # Reference it in AndroidManifest.xml
-          sed -i 's/android:usesCleartextTraffic="true"/android:usesCleartextTraffic="true"\n        android:networkSecurityConfig="@xml\/network_security_config"/' AndroidManifest.xml
-
-          echo "✅ Cleartext traffic enabled for localhost"
-          echo "=== Updated AndroidManifest.xml ==="
+          echo "✅ Cleartext traffic enabled"
           cat AndroidManifest.xml
-          echo "=== network_security_config.xml ==="
-          cat res/xml/network_security_config.xml
 
       - name: Update Gradle wrapper to fix Maven 403 errors
         working-directory: demo-app/mobile-flutter/android
