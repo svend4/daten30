@@ -1,0 +1,32 @@
+name: dynamic_hub
+description: Dynamic Hub Portal - модульное приложение с динамическими микросервисами
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP клиент
+  http: ^1.1.0
+
+  # Material Design 3
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Если есть ассеты
+  # assets:
+  #   - images/
