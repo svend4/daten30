@@ -72,12 +72,16 @@ jobs:
       - name: Comment PR with APK download link
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        env:
+          BRANCH: ${{ steps.version.outputs.branch }}
+          SHA_SHORT: ${{ steps.version.outputs.sha_short }}
         with:
           script: |
-            const fs = require('fs');
             const runId = context.runId;
             const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
             const downloadUrl = `${repoUrl}/actions/runs/${runId}`;
+            const branch = process.env.BRANCH;
+            const shaShort = process.env.SHA_SHORT;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -88,7 +92,7 @@ jobs:
 **Скачать APK:**
 ${downloadUrl}
 
-**Файл:** \`demo-app-${{ steps.version.outputs.branch }}-${{ steps.version.outputs.sha_short }}.apk\`
+**Файл:** \`demo-app-${branch}-${shaShort}.apk\`
 
 **Режим:** Termux (localhost:5001/5002/5003)
 
