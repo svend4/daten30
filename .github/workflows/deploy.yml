@@ -64,7 +64,8 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Деплой только на main ветку и если KUBE_CONFIG настроен
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_DEPLOYMENT == 'true'
 
     steps:
       - name: Checkout code
