@@ -172,6 +172,7 @@ adb install build/app/outputs/flutter-apk/app-release.apk
 
 | Документ | Описание |
 |----------|----------|
+| [FLUTTER_APPS_COMPARISON.md](FLUTTER_APPS_COMPARISON.md) | Сравнение трех Flutter приложений |
 | [hub-portal/README.md](hub-portal/README.md) | Hub Portal архитектура |
 | [hub-portal/flutter-hub/README.md](hub-portal/flutter-hub/README.md) | Flutter приложение |
 | [hub-portal/flutter-hub/BUILD_INSTRUCTIONS.md](hub-portal/flutter-hub/BUILD_INSTRUCTIONS.md) | Инструкции сборки APK |
