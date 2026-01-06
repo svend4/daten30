@@ -38,7 +38,7 @@ jobs:
         run: |
           if [ ! -d "android" ]; then
             echo "Android folder not found, creating..."
-            flutter create --platforms android .
+            flutter create --platforms android --org com.demoapp --project-name demo_app_mobile .
           else
             echo "Android folder already exists"
           fi
