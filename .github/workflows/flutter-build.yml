@@ -51,16 +51,26 @@ jobs:
           # Update gradle-wrapper.properties to use Gradle 8.3
           sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-bin.zip|' gradle/wrapper/gradle-wrapper.properties
           echo "✓ Updated Gradle wrapper to 8.3"
+          cat gradle/wrapper/gradle-wrapper.properties
 
           # Backup original build.gradle
+          echo "=== Original build.gradle ==="
+          cat build.gradle
           cp build.gradle build.gradle.backup
 
           # Copy pre-configured build.gradle
+          echo "=== Copying new build.gradle ==="
+          ls -la ../../../.github/android-build.gradle
           cp ../../../.github/android-build.gradle build.gradle
 
-          echo "✓ Replaced build.gradle with Gradle 8.1.0 and Kotlin 1.9.0"
+          # Verify the copy worked
           echo "=== New build.gradle content ==="
           cat build.gradle
+
+          # Clean Gradle cache
+          rm -rf ~/.gradle/caches/
+          rm -rf .gradle/
+          echo "✓ Cleaned Gradle cache"
 
       - name: Analyze code
         working-directory: demo-app/mobile-flutter
