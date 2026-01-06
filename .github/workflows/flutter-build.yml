@@ -25,7 +25,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'
+          flutter-version: '3.24.5'
           channel: 'stable'
           cache: true
 
@@ -161,7 +161,7 @@ jobs:
           echo "### Детали:" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Flutter:** 3.16.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Flutter:** 3.24.5" >> $GITHUB_STEP_SUMMARY
           echo "- **API Mode:** Termux (localhost)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Скачать APK:" >> $GITHUB_STEP_SUMMARY
