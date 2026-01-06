@@ -55,42 +55,10 @@ jobs:
           # Backup original build.gradle
           cp build.gradle build.gradle.backup
 
-          # Rewrite build.gradle with compatible versions
-          cat > build.gradle <<'EOF'
-buildscript {
-    ext.kotlin_version = '1.9.0'
-    repositories {
-        google()
-        mavenCentral()
-    }
+          # Copy pre-configured build.gradle
+          cp ../../../.github/android-build.gradle build.gradle
 
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-rootProject.buildDir = '../build'
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(':app')
-}
-
-tasks.register("clean", Delete) {
-    delete rootProject.buildDir
-}
-EOF
-
-          echo "✓ Rewrote build.gradle with Gradle 8.1.0 and Kotlin 1.9.0"
+          echo "✓ Replaced build.gradle with Gradle 8.1.0 and Kotlin 1.9.0"
           echo "=== New build.gradle content ==="
           cat build.gradle
 
