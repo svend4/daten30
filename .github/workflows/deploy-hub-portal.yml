@@ -1,0 +1,249 @@
+name: Deploy Hub Portal
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'hub-portal/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'staging' }}
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install flask flask-cors requests
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r hub-portal/* deploy/
+          cd deploy
+          tar -czf ../hub-portal-deployment.tar.gz .
+          cd ..
+          ls -lh hub-portal-deployment.tar.gz
+
+      - name: Upload deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: hub-portal-deployment
+          path: hub-portal-deployment.tar.gz
+          retention-days: 30
+
+      # SSH Deployment (if you have a server)
+      - name: Deploy to server via SSH
+        if: false  # Set to true when you have SSH credentials
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts
+
+          # Copy files
+          scp -i ~/.ssh/deploy_key hub-portal-deployment.tar.gz $SERVER_USER@$SERVER_HOST:/tmp/
+
+          # Deploy on server
+          ssh -i ~/.ssh/deploy_key $SERVER_USER@$SERVER_HOST << 'ENDSSH'
+            cd /opt/hub-portal
+            tar -xzf /tmp/hub-portal-deployment.tar.gz
+
+            # Restart services
+            ./scripts/stop-all.sh
+            sleep 2
+            ./scripts/start-all.sh
+
+            # Health check
+            sleep 5
+            ./scripts/health-check.sh
+          ENDSSH
+
+      - name: Deployment summary
+        run: |
+          cat > deployment-summary.md << EOF
+          # Deployment Summary
+
+          **Environment:** ${{ github.event.inputs.environment || 'staging' }}
+          **Version:** ${GITHUB_SHA:0:7}
+          **Branch:** ${GITHUB_REF_NAME}
+          **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Triggered by:** ${GITHUB_ACTOR}
+
+          ## Deployed Components
+
+          - Service Registry (port 5000)
+          - Message Bus (port 5999)
+          - Product Service (port 5001)
+          - Weather Service (port 5002)
+          - Crypto Service (port 5003)
+          - News Service (port 5004)
+          - Task Service (port 5005)
+
+          ## Next Steps
+
+          1. Verify services are running
+          2. Test API endpoints
+          3. Monitor logs for errors
+          4. Update Flutter app if needed
+
+          EOF
+          cat deployment-summary.md
+
+      - name: Upload deployment summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-summary
+          path: deployment-summary.md
+
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: false  # Enable when you have Docker Hub credentials
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Create Dockerfile for Registry
+        run: |
+          cat > hub-portal/infrastructure/registry-service/Dockerfile << 'EOF'
+          FROM python:3.11-slim
+
+          WORKDIR /app
+
+          # Install dependencies
+          RUN pip install --no-cache-dir flask flask-cors requests
+
+          # Copy service files
+          COPY registry_service.py .
+
+          # Expose port
+          EXPOSE 5000
+
+          # Health check
+          HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+            CMD python -c "import requests; requests.get('http://localhost:5000/health')"
+
+          # Run service
+          CMD ["python", "registry_service.py"]
+          EOF
+
+      - name: Build Registry Docker image
+        working-directory: hub-portal/infrastructure/registry-service
+        run: |
+          docker build -t hub-portal-registry:latest .
+          docker tag hub-portal-registry:latest hub-portal-registry:${GITHUB_SHA:0:7}
+
+      - name: Create docker-compose.yml
+        run: |
+          cat > hub-portal/docker-compose.yml << 'EOF'
+          version: '3.8'
+
+          services:
+            registry:
+              image: hub-portal-registry:latest
+              container_name: hub-registry
+              ports:
+                - "5000:5000"
+              networks:
+                - hub-network
+              restart: unless-stopped
+
+            message-bus:
+              image: hub-portal-message-bus:latest
+              container_name: hub-message-bus
+              ports:
+                - "5999:5999"
+              networks:
+                - hub-network
+              restart: unless-stopped
+              depends_on:
+                - registry
+
+            product-service:
+              image: hub-portal-product:latest
+              container_name: hub-product
+              ports:
+                - "5001:5001"
+              networks:
+                - hub-network
+              environment:
+                - REGISTRY_URL=http://registry:5000
+                - MESSAGE_BUS_URL=http://message-bus:5999
+              restart: unless-stopped
+              depends_on:
+                - registry
+                - message-bus
+
+            weather-service:
+              image: hub-portal-weather:latest
+              container_name: hub-weather
+              ports:
+                - "5002:5002"
+              networks:
+                - hub-network
+              environment:
+                - REGISTRY_URL=http://registry:5000
+              restart: unless-stopped
+              depends_on:
+                - registry
+
+          networks:
+            hub-network:
+              driver: bridge
+
+          volumes:
+            registry-data:
+            message-bus-data:
+            product-data:
+          EOF
+
+      - name: Save Docker images
+        run: |
+          mkdir -p docker-images
+          docker save hub-portal-registry:latest | gzip > docker-images/registry.tar.gz
+          ls -lh docker-images/
+
+      - name: Upload Docker artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-images
+          path: docker-images/
+          retention-days: 7
