@@ -24,8 +24,7 @@ if (flutterVersionName == null) {
 
 android {
     namespace "com.daten30.dynamichub"
-    compileSdk 34
-    ndkVersion "25.1.8937393"
+    compileSdkVersion 33
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -42,8 +41,8 @@ android {
 
     defaultConfig {
         applicationId "com.daten30.dynamichub"
-        minSdk 24
-        targetSdk 34
+        minSdkVersion 21
+        targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -51,8 +50,6 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
         }
     }
 }
