@@ -42,7 +42,7 @@ android {
 
     defaultConfig {
         applicationId "com.daten30.dynamichub"
-        minSdk 21
+        minSdk 24
         targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
