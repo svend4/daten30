@@ -1,0 +1,237 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Build Flutter APK
+        working-directory: hub-portal/flutter-hub
+        run: |
+          flutter pub get
+          flutter build apk --release
+          flutter build apk --split-per-abi --release
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release-artifacts
+
+          # Flutter APKs
+          cp hub-portal/flutter-hub/build/app/outputs/flutter-apk/app-release.apk \
+             release-artifacts/DynamicHub-${{ steps.version.outputs.version }}-universal.apk
+
+          cp hub-portal/flutter-hub/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+             release-artifacts/DynamicHub-${{ steps.version.outputs.version }}-arm64-v8a.apk || true
+
+          cp hub-portal/flutter-hub/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+             release-artifacts/DynamicHub-${{ steps.version.outputs.version }}-armeabi-v7a.apk || true
+
+          # Backend deployment package
+          cd hub-portal
+          tar -czf ../release-artifacts/hub-portal-backend-${{ steps.version.outputs.version }}.tar.gz \
+            infrastructure/ microservices/ scripts/ docs/ *.md
+          cd ..
+
+          # Calculate checksums
+          cd release-artifacts
+          sha256sum * > SHA256SUMS.txt
+          cd ..
+
+          ls -lh release-artifacts/
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          cat > CHANGELOG.md << 'EOF'
+          # Release ${{ steps.version.outputs.version }}
+
+          ## What's New
+
+          ### Flutter Application
+          - Dynamic Hub Portal Flutter app
+          - Auto-discovery of microservices
+          - Dynamic UI generation from JSON schemas
+          - Offline-first architecture
+
+          ### Backend Services
+          - Service Registry for service discovery
+          - Message Bus for event-driven architecture
+          - 5 Example microservices:
+            - Product Service (e-commerce)
+            - Weather Service (weather forecasts)
+            - Crypto Service (cryptocurrency prices)
+            - News Service (news feed)
+            - Task Service (todo list)
+
+          ### Infrastructure
+          - Management scripts (start-all, stop-all, health-check)
+          - Comprehensive documentation
+          - GitHub Actions CI/CD
+          - Docker support
+
+          ## Installation
+
+          ### Flutter App
+
+          1. Download the appropriate APK:
+             - Universal: `DynamicHub-${{ steps.version.outputs.version }}-universal.apk`
+             - ARM64: `DynamicHub-${{ steps.version.outputs.version }}-arm64-v8a.apk`
+             - ARMv7: `DynamicHub-${{ steps.version.outputs.version }}-armeabi-v7a.apk`
+
+          2. Install on Android device (7.0+)
+
+          ### Backend (Termux)
+
+          ```bash
+          # Download and extract
+          wget https://github.com/YOUR_USERNAME/daten30/releases/download/${{ steps.version.outputs.version }}/hub-portal-backend-${{ steps.version.outputs.version }}.tar.gz
+          tar -xzf hub-portal-backend-${{ steps.version.outputs.version }}.tar.gz
+
+          # Install dependencies
+          pkg install python git sqlite
+          pip install flask flask-cors requests
+
+          # Start services
+          bash scripts/start-all.sh
+
+          # Verify
+          bash scripts/health-check.sh
+          ```
+
+          ## Documentation
+
+          - [README.md](https://github.com/YOUR_USERNAME/daten30/blob/main/README.md)
+          - [TERMUX_QUICK_START.md](https://github.com/YOUR_USERNAME/daten30/blob/main/TERMUX_QUICK_START.md)
+          - [BUILD_HUB_APP.md](https://github.com/YOUR_USERNAME/daten30/blob/main/BUILD_HUB_APP.md)
+          - [FLUTTER_APPS_COMPARISON.md](https://github.com/YOUR_USERNAME/daten30/blob/main/FLUTTER_APPS_COMPARISON.md)
+
+          ## Checksums
+
+          See `SHA256SUMS.txt` for file checksums.
+
+          ## System Requirements
+
+          - **Android**: 7.0+ (API 21+)
+          - **RAM**: 200 MB for backend, 2 GB for device
+          - **Storage**: 150 MB
+
+          ## Support
+
+          - Report issues: https://github.com/YOUR_USERNAME/daten30/issues
+          - Documentation: https://github.com/YOUR_USERNAME/daten30/tree/main
+
+          EOF
+
+          cat CHANGELOG.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+          files: |
+            release-artifacts/*.apk
+            release-artifacts/*.tar.gz
+            release-artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.version.outputs.version }}
+          path: release-artifacts/
+          retention-days: 90
+
+  publish-docs:
+    name: Publish Documentation
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install mkdocs
+        run: |
+          pip install mkdocs mkdocs-material
+
+      - name: Build documentation
+        run: |
+          # Create mkdocs.yml if doesn't exist
+          if [ ! -f mkdocs.yml ]; then
+            cat > mkdocs.yml << 'EOF'
+          site_name: Daten30 - Dynamic Hub Portal
+          theme:
+            name: material
+          nav:
+            - Home: README.md
+            - Quick Start: TERMUX_QUICK_START.md
+            - Build Guide: BUILD_HUB_APP.md
+            - Flutter Apps: FLUTTER_APPS_COMPARISON.md
+            - Developer Guide: DEVELOPER_GUIDE.md
+            - Architecture: PROJECT_STRUCTURE.md
+          EOF
+          fi
+
+          mkdocs build
+
+      - name: Deploy to GitHub Pages
+        if: false  # Enable when ready
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site

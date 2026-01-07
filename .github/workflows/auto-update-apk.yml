@@ -1,0 +1,120 @@
+name: Auto Update APK
+
+# Автоматическое обновление APK при изменениях в коде
+
+on:
+  schedule:
+    # Запускать каждый день в 02:00 UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [ main ]
+    paths:
+      - 'hub-portal/flutter-hub/lib/**'
+      - 'hub-portal/flutter-hub/pubspec.yaml'
+  workflow_dispatch:
+
+jobs:
+  check-changes:
+    name: Check for Changes
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+
+      - name: Check for Flutter changes
+        id: check
+        run: |
+          # Проверить изменения за последние 24 часа
+          CHANGES=$(git log --since="24 hours ago" --name-only --pretty=format: -- hub-portal/flutter-hub/lib/ hub-portal/flutter-hub/pubspec.yaml | sort -u)
+
+          if [ -z "$CHANGES" ]; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "No changes in Flutter code"
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "Changes detected:"
+            echo "$CHANGES"
+          fi
+
+  build-and-upload:
+    name: Build and Upload APK
+    needs: check-changes
+    if: needs.check-changes.outputs.should_build == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
+
+      - name: Build APK
+        working-directory: hub-portal/flutter-hub
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - name: Get date for filename
+        id: date
+        run: echo "date=$(date +'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: |
+          cp hub-portal/flutter-hub/build/app/outputs/flutter-apk/app-release.apk \
+             DynamicHub-nightly-${{ steps.date.outputs.date }}.apk
+
+      - name: Upload to artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-build-${{ steps.date.outputs.date }}
+          path: DynamicHub-nightly-${{ steps.date.outputs.date }}.apk
+          retention-days: 7
+
+      # Опционально: загрузка в облако
+      - name: Upload to cloud storage
+        if: false  # Включить когда будут credentials
+        run: |
+          # Пример для S3
+          # aws s3 cp DynamicHub-nightly-${{ steps.date.outputs.date }}.apk \
+          #   s3://your-bucket/nightly/
+
+          # Пример для Google Drive через rclone
+          # rclone copy DynamicHub-nightly-${{ steps.date.outputs.date }}.apk \
+          #   gdrive:DynamicHub/nightly/
+
+          echo "Upload to cloud storage (disabled)"
+
+  notify:
+    name: Send Notification
+    needs: build-and-upload
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send success notification
+        if: needs.build-and-upload.result == 'success'
+        run: |
+          echo "✅ Nightly build completed successfully!"
+          # Можно добавить отправку в Telegram, Discord, etc.
+
+      - name: Send failure notification
+        if: needs.build-and-upload.result == 'failure'
+        run: |
+          echo "❌ Nightly build failed!"
+          # Можно добавить отправку в Telegram, Discord, etc.

@@ -1,0 +1,210 @@
+name: Build Flutter Hub APK
+
+on:
+  push:
+    branches: [ main, develop, 'claude/**' ]
+    paths:
+      - 'hub-portal/flutter-hub/**'
+      - '.github/workflows/build-flutter-apk.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'hub-portal/flutter-hub/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: false
+        default: 'auto'
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
+
+      - name: Check Flutter version
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.pub-cache
+            hub-portal/flutter-hub/.dart_tool
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
+      - name: Get Flutter dependencies
+        working-directory: hub-portal/flutter-hub
+        run: flutter pub get
+
+      - name: Run Flutter analyze
+        working-directory: hub-portal/flutter-hub
+        run: flutter analyze --no-fatal-infos
+
+      - name: Generate version info
+        id: version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ] && [ "${{ github.event.inputs.version }}" != "auto" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="1.0.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update version in pubspec.yaml
+        working-directory: hub-portal/flutter-hub
+        run: |
+          sed -i "s/version: .*/version: ${{ steps.version.outputs.version }}+${GITHUB_RUN_NUMBER}/" pubspec.yaml
+          cat pubspec.yaml | grep version
+
+      - name: Build APK (Release)
+        working-directory: hub-portal/flutter-hub
+        run: flutter build apk --release --verbose
+
+      - name: Build APK (Split per ABI)
+        working-directory: hub-portal/flutter-hub
+        run: flutter build apk --split-per-abi --release
+
+      - name: Rename APK files
+        working-directory: hub-portal/flutter-hub
+        run: |
+          mkdir -p artifacts
+
+          # Universal APK
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             artifacts/DynamicHub-v${{ steps.version.outputs.version }}-universal.apk
+
+          # Split APKs
+          if [ -f build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+               artifacts/DynamicHub-v${{ steps.version.outputs.version }}-armeabi-v7a.apk
+          fi
+
+          if [ -f build/app/outputs/flutter-apk/app-arm64-v8a-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+               artifacts/DynamicHub-v${{ steps.version.outputs.version }}-arm64-v8a.apk
+          fi
+
+          if [ -f build/app/outputs/flutter-apk/app-x86_64-release.apk ]; then
+            cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
+               artifacts/DynamicHub-v${{ steps.version.outputs.version }}-x86_64.apk
+          fi
+
+          ls -lh artifacts/
+
+      - name: Calculate APK checksums
+        working-directory: hub-portal/flutter-hub/artifacts
+        run: |
+          sha256sum *.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: DynamicHub-APKs-v${{ steps.version.outputs.version }}
+          path: |
+            hub-portal/flutter-hub/artifacts/*.apk
+            hub-portal/flutter-hub/artifacts/SHA256SUMS.txt
+          retention-days: 30
+
+      - name: Create build info
+        working-directory: hub-portal/flutter-hub/artifacts
+        run: |
+          cat > build-info.txt << EOF
+          Build Information
+          =================
+
+          Version: ${{ steps.version.outputs.version }}
+          Build Number: ${GITHUB_RUN_NUMBER}
+          Git Commit: ${GITHUB_SHA:0:7}
+          Branch: ${GITHUB_REF_NAME}
+          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Workflow: ${GITHUB_WORKFLOW}
+
+          APK Files:
+          $(ls -lh *.apk)
+
+          Checksums:
+          $(cat SHA256SUMS.txt)
+          EOF
+          cat build-info.txt
+
+      - name: Upload build info
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-info
+          path: hub-portal/flutter-hub/artifacts/build-info.txt
+          retention-days: 90
+
+      - name: Comment PR with APK info
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const buildInfo = fs.readFileSync('hub-portal/flutter-hub/artifacts/build-info.txt', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📱 Flutter APK Build Complete\n\n\`\`\`\n${buildInfo}\n\`\`\`\n\n✅ APK artifacts are available in the workflow run.`
+            })
+
+      - name: Create Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            hub-portal/flutter-hub/artifacts/*.apk
+            hub-portal/flutter-hub/artifacts/SHA256SUMS.txt
+          body_path: hub-portal/flutter-hub/artifacts/build-info.txt
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Notify Build Status
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+
+    steps:
+      - name: Send success notification
+        if: needs.build.result == 'success'
+        run: |
+          echo "✅ Build successful!"
+          echo "APK artifacts uploaded to workflow run"
+
+      - name: Send failure notification
+        if: needs.build.result == 'failure'
+        run: |
+          echo "❌ Build failed!"
+          echo "Check logs for details"
+          exit 1
