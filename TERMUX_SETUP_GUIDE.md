@@ -36,7 +36,7 @@ pkg install wget curl -y
 cd ~
 
 # Клонирование репозитория
-git clone <URL_репозитория> daten30
+git clone https://github.com/svend4/daten30.git daten30
 
 # Переход в директорию проекта
 cd daten30/demo-app/backend-flask
@@ -125,7 +125,7 @@ pkg install wget curl jq -y
 cd ~
 
 # Клонирование репозитория
-git clone <URL_репозитория> daten30
+git clone https://github.com/svend4/daten30.git daten30
 
 # Переход в директорию hub-portal
 cd daten30/hub-portal
