@@ -12,6 +12,9 @@
 # Установка зависимостей
 pkg update && pkg upgrade -y && pkg install python git -y && pip install flask flask-cors
 
+# Клонирование репозитория (если еще не склонирован)
+cd ~ && rm -rf daten30 && git clone https://github.com/svend4/daten30.git
+
 # Запуск всех сервисов
 cd ~/daten30/demo-app/backend-flask/user-service && python user_service.py &
 cd ~/daten30/demo-app/backend-flask/product-service && python product_service.py &
@@ -36,6 +39,9 @@ pkill -f python
 ```bash
 # Установка зависимостей
 pkg update && pkg upgrade -y && pkg install python git sqlite jq -y && pip install flask flask-cors requests
+
+# Клонирование репозитория (если еще не склонирован)
+cd ~ && rm -rf daten30 && git clone https://github.com/svend4/daten30.git
 
 # Автоматический запуск
 cd ~/daten30/hub-portal && bash scripts/start-all.sh
@@ -94,6 +100,9 @@ createdb hub_portal_db
 
 # Проверка
 psql -U postgres -d hub_portal_db -c "SELECT version();"
+
+# Клонирование репозитория
+cd ~ && rm -rf daten30 && git clone https://github.com/svend4/daten30.git
 ```
 
 ### Шаг 2: Создание production скрипта
